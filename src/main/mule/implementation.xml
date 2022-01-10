@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="getHotelByCity" doc:id="dc48ad96-3906-4cbb-b07c-fc9ea74e024c" >
+		<salesforce:query doc:name="getHotelByCity" doc:id="ec45d69c-7b3b-4cb5-be3a-7e22e974861f" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[select Name,city__c,address__c,rating__c,room__c,guest__c from Hotel__c where city__c=':city']]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"city" : vars.city
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="ed507f08-f883-420d-994d-4f1d8f32fbbd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+hotels: {(payload map(object,index)->{
+	
+	address:object.address__c,
+	city:object.city__c,
+	rating:object.rating__c,
+	hotelName:object.Name,
+	guest:object.guest__c,
+	room:object.room__c
+})
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="921258d5-0f19-49d0-ba33-cbc4f12f97ab" message="#[payload]"/>
+	</flow>
+	<flow name="getHotelByRating" doc:id="e50f63a9-5c10-46b7-aed4-e89b5d4e2408" >
+		<salesforce:query doc:name="getHotelByRating" doc:id="191ee6cb-8970-45cc-a634-bd6265b778ec" config-ref="Salesforce_Config" >
+			<salesforce:salesforce-query ><![CDATA[select Name,city__c,address__c,rating__c,room__c,guest__c from Hotel__c where rating__c>=:rating]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"rating" : vars.rating
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="c6a23305-1f89-41cf-a6fc-139713ea29ff" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+hotels: {(payload map(object,index)->{
+	
+	address:object.address__c,
+	city:object.city__c,
+	rating:object.rating__c,
+	hotelName:object.Name,
+	guest:object.guest__c,
+	room:object.room__c
+})
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="5f79a971-00b3-40da-bb7b-2b326918b0a1" message="#[payload]" />
+	</flow>
+	<flow name="BookMyHotel" doc:id="b654a95a-0372-4501-9112-e4cb091baeeb" >
+		<salesforce:create type="hotelBooking__c" doc:name="Create" doc:id="8edea71e-f4ec-4a1c-800c-b50f37e5572b" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="79a0a248-949e-4ba3-91db-180b90b4f3ab" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message":"Booking successful"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="cancelMyBooking" doc:id="4823ae4c-d37e-4716-b8e3-656c4f003980" >
+		<salesforce:query doc:name="Query" doc:id="a426cc01-f407-4c01-912a-16b67ef9bcde" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[select Id from hotelBooking__c where Name=':bookingId']]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"bookingId" : vars.bookingId
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="47e3400a-6b88-4598-914c-3548f9e56a01" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+	Id:payload.Id[0]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:delete doc:name="Delete" doc:id="56ac92f8-e539-4224-a81f-5208c690e627" config-ref="Salesforce_Config">
+			<salesforce:ids ><![CDATA[#[payload.Id]]]></salesforce:ids>
+		</salesforce:delete>
+		<logger level="INFO" doc:name="Logger" doc:id="10cd0820-aae5-4878-a44a-afbfb684da41" />
+	</flow>
+</mule>

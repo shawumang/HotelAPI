@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_b654a95a_0372_4501_9112_e4cb091baeeb_Output_Attributes = {| responseProtocolHeaders?: {|  |} |}
+

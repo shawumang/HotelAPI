@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit-soap="http://www.mulesoft.org/schema/mule/apikit-soap" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/apikit-soap http://www.mulesoft.org/schema/mule/apikit-soap/current/mule-apikit-soap.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081"/>
+    </http:listener-config>
+    <apikit-soap:config httpStatusVarName="httpStatus" name="soapkit-config" port="HotelAPISOAP" service="HotelAPI" wsdlLocation="HotelAPI.wsdl"/>
+    <flow name="api-main">
+        <http:listener config-ref="api-httpListenerConfig" path="/HotelAPI/HotelAPISOAP">
+            <http:response statusCode="#[attributes.additionalTransportData.statusCode default 200]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[attributes.protocolHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[attributes.additionalTransportData.statusCode default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[attributes.protocolHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit-soap:router config-ref="soapkit-config">
+            <apikit-soap:message>#[payload]</apikit-soap:message>
+            <apikit-soap:attributes>#[
+              %dw 2.0
+              output application/java
+              ---
+              {
+                  headers: attributes.headers,
+                  method: attributes.method,
+                  queryString: attributes.queryString
+            }]</apikit-soap:attributes>
+        </apikit-soap:router>
+    </flow>
+    <flow name="getHotelsByCity:\soapkit-config">
+		<set-variable value="#[%dw 2.0&#10;ns ns0 http://www.example.org/HotelAPI/&#10;---&#10;payload.body.ns0#getHotelsByCity.city]" doc:name="city" doc:id="a55a40bd-0db3-42be-9e76-ec507543051e" variableName="city"/>
+		<flow-ref doc:name="getHotelByCity" doc:id="1b4038f5-c624-4427-89ef-9a53d3f90a44" name="getHotelByCity"/>
+    </flow>
+    <flow name="getHotelsByRating:\soapkit-config">
+		<set-variable value="#[%dw 2.0&#10;ns ns0 http://www.example.org/HotelAPI/&#10;---&#10;payload.body.ns0#getHotelsByRating.rating]" doc:name="rating" doc:id="ed2b4a60-de16-46ed-aae6-657de189891c" variableName="rating"/>
+		<flow-ref doc:name="getHotelByRating" doc:id="8ff43132-7148-414e-a851-19a5dda19060" name="getHotelByRating"/>
+    </flow>
+    <flow name="BookMyHotel:\soapkit-config">
+		<set-payload value="#[%dw 2.0&#10;ns ns0 http://www.example.org/HotelAPI/&#10;---&#10;payload.body.ns0#BookMyHotel]" doc:name="payload" doc:id="6a688caf-ba67-4b5b-ab95-66edd5e34542" />
+		<ee:transform doc:name="Transform Message" doc:id="13f0ccf5-9415-480c-a9b6-1424cf72d148" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	hotelName__c: payload.hotelName,
+	Name__c: payload.Name,
+	address__c: payload.address,
+	bookingDate__c: payload.bookingDate as DateTime,
+	bookingPrice__c: payload.bookingPrice,
+	checkInTime__c: payload.checkInTime as DateTime,
+	checkOutTime__c: payload.checkOutTime as DateTime
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="BookMyHotel" doc:id="b39bf3b9-1f5a-4123-ac0d-9809b8921359" name="BookMyHotel"/>
+    </flow>
+    <flow name="CancelBooking:\soapkit-config">
+		<set-variable value="#[%dw 2.0&#10;ns ns0 http://www.example.org/HotelAPI/&#10;---&#10;payload.body.ns0#CancelBooking.bookingId]" doc:name="Set Variable" doc:id="c8adda4f-96b9-4a5d-aef0-617f08bc9345" variableName="bookingId"/>
+		<flow-ref doc:name="cancelMyBooking" doc:id="a8897353-9574-418b-aa60-59a28cde941b" name="cancelMyBooking"/>
+    </flow>
+</mule>
